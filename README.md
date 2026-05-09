@@ -15,3 +15,19 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Project Structure
+
+```
+lib/
+├── core/            # 公共能力
+├── features/        # 功能模块（重点）
+│    ├── fund/
+│    ├── portfolio/
+│    ├── market/
+│    └── settings/
+├── data/            # 数据层实现
+├── domain/          # 抽象接口
+├── app/             # 路由/入口
+└── main.dart
+```
