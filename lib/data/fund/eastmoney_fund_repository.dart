@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
@@ -52,14 +51,14 @@ class EastmoneyFundRepository implements FundRepository {
   Future<String> fetchRelatedSectors(String code) async {
     final normalized = code.trim();
     if (normalized.isEmpty || _cloudStore == null) return '';
-    return (await _cloudStore!.fetchRelatedSector(normalized))?.trim() ?? '';
+    return (await _cloudStore.fetchRelatedSector(normalized))?.trim() ?? '';
   }
 
   @override
   Future<String> fetchFundSecidByRelatedSector(String relatedSector) async {
     final normalized = relatedSector.trim();
     if (normalized.isEmpty || _cloudStore == null) return '';
-    return (await _cloudStore!.fetchSecidByRelatedSector(normalized))?.trim() ??
+    return (await _cloudStore.fetchSecidByRelatedSector(normalized))?.trim() ??
         '';
   }
 
@@ -353,7 +352,7 @@ class EastmoneyFundRepository implements FundRepository {
   Future<FundTextParseResult?> parseFundTextWithLlm(String text) async {
     final normalized = text.trim();
     if (normalized.isEmpty || _cloudStore == null) return null;
-    final items = await _cloudStore!.analyzeFundText(normalized);
+    final items = await _cloudStore.analyzeFundText(normalized);
     if (items == null) return null;
     return FundTextParseResult.fromItems(items);
   }
