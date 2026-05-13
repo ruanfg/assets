@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 
-import '../../core/network/app_dio_factory.dart';
-import '../../core/utils/fund_js_parsers.dart';
-import '../../domain/market/market_repository.dart';
-import '../../features/market/models/market_models.dart';
+import '../../../core/network/app_dio_factory.dart';
+import '../../../core/utils/fund_js_parsers.dart';
+import '../repository/market_repository.dart';
+import '../models/market_models.dart';
 
 class TencentMarketRepository implements MarketRepository {
   TencentMarketRepository({Dio? dio}) : _dio = dio ?? AppDioFactory.create();
@@ -65,7 +65,9 @@ class TencentMarketRepository implements MarketRepository {
     final response = await _dio.get<String>(
       'https://qt.gtimg.cn/q=$codes&_t=${DateTime.now().millisecondsSinceEpoch}',
     );
-    final assignments = FundJsParsers.parseTencentQuoteAssignments(response.data ?? '');
+    final assignments = FundJsParsers.parseTencentQuoteAssignments(
+      response.data ?? '',
+    );
     final result = <MarketIndexQuote>[];
     for (final item in _marketIndexKeys) {
       final variableName = 'v_${item.code}';

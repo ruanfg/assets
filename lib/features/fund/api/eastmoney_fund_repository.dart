@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import '../../core/network/app_dio_factory.dart';
-import '../../core/utils/fund_js_parsers.dart';
-import '../../core/utils/shanghai_clock.dart';
-import '../../domain/fund/fund_cloud_store.dart';
-import '../../domain/fund/fund_repository.dart';
-import '../../features/fund/models/fund_models.dart';
+import '../../../core/network/app_dio_factory.dart';
+import '../../../core/utils/fund_js_parsers.dart';
+import '../../../core/utils/shanghai_clock.dart';
+import '../repository/fund_cloud_store.dart';
+import '../repository/fund_repository.dart';
+import '../models/fund_models.dart';
 
 class EastmoneyFundRepository implements FundRepository {
   EastmoneyFundRepository({Dio? dio, FundCloudStore? cloudStore})
@@ -471,6 +471,27 @@ class EastmoneyFundRepository implements FundRepository {
         isLastQuarter: false,
       );
     }
+  }
+
+  @override
+  Future<List<FundNetValuePoint>> fetchRecentNavRecords(
+    String code, {
+    int count = 6,
+  }) async {
+    final content = await _fetchLsjzContent(
+      code: code,
+      page: 1,
+      per: count,
+      startDate: '',
+      endDate: '',
+    );
+    return FundJsParsers.parseNetValuesFromLsjzContent(content);
+  }
+
+  @override
+  Future<List<FundAnnualReturn>> fetchAnnualReturns(String code) async {
+    final raw = await fetchFundPingzhongdata(code);
+    return FundJsParsers.computeAnnualReturns(raw.raw);
   }
 }
 

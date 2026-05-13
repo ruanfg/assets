@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-import '../../core/network/app_dio_factory.dart';
-import '../../domain/settings/settings_repository.dart';
-import '../../features/settings/models/settings_models.dart';
+import '../../../core/network/app_dio_factory.dart';
+import '../repository/settings_repository.dart';
+import '../models/settings_models.dart';
 
 class RemoteSettingsRepository implements SettingsRepository {
   RemoteSettingsRepository({Dio? dio}) : _dio = dio ?? AppDioFactory.create();
@@ -32,19 +32,13 @@ class RemoteSettingsRepository implements SettingsRepository {
     required String accessKey,
     required Map<String, dynamic> fields,
   }) async {
-    final formData = FormData.fromMap({
-      'access_key': accessKey,
-      ...fields,
-    });
+    final formData = FormData.fromMap({'access_key': accessKey, ...fields});
     final response = await _dio.post<String>(
       'https://api.web3forms.com/submit',
       data: formData,
     );
     final decoded = jsonDecode(response.data ?? '{}');
     final raw = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
-    return FeedbackResponse(
-      success: raw['success'] == true,
-      raw: raw,
-    );
+    return FeedbackResponse(success: raw['success'] == true, raw: raw);
   }
 }

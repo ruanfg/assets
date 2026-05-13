@@ -1,4 +1,4 @@
-import '../../features/fund/models/fund_models.dart';
+import '../models/fund_models.dart';
 
 abstract class FundRepository {
   Future<String> fetchRelatedSectors(String code);
@@ -7,7 +7,9 @@ abstract class FundRepository {
 
   Future<RelatedSectorQuote?> fetchEastmoneySectorQuote(String secid);
 
-  Future<RelatedSectorQuote?> fetchRelatedSectorLiveQuote(String relatedSectorLabel);
+  Future<RelatedSectorQuote?> fetchRelatedSectorLiveQuote(
+    String relatedSectorLabel,
+  );
 
   Future<double?> fetchFundNetValue(String code, String date);
 
@@ -17,7 +19,10 @@ abstract class FundRepository {
     String endDate,
   );
 
-  Future<SmartFundNetValue?> fetchSmartFundNetValue(String code, String startDate);
+  Future<SmartFundNetValue?> fetchSmartFundNetValue(
+    String code,
+    String startDate,
+  );
 
   Future<FundQuote> fetchFundDataFallback(String code);
 
@@ -35,4 +40,11 @@ abstract class FundRepository {
   });
 
   Future<FundTextParseResult?> parseFundTextWithLlm(String text);
+
+  Future<List<FundNetValuePoint>> fetchRecentNavRecords(
+    String code, {
+    int count = 6,
+  });
+
+  Future<List<FundAnnualReturn>> fetchAnnualReturns(String code);
 }

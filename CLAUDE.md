@@ -22,86 +22,291 @@ flutter build ios
 
 # Build for Android
 flutter build apk
+
+# Run single test
+flutter test test/widget_test.dart
+
+# Generate code (if using freezed/json_serializable)
+dart run build_runner build --delete-conflicting-outputs
 ```
 
 ## Project Architecture
 
-This Flutter application follows a clean architecture pattern with clear separation of concerns:
+This Flutter application follows a **Feature-First + Clean Architecture** pattern with clear separation of concerns.
 
-### Layer Structure
+### Recommended Directory Structure
 
 ```
 lib/
-├── core/              # Cross-cutting capabilities
-│   ├── network/      # HTTP client factory
-│   └── utils/        # Shared utilities (clock, JS parsers)
-├── features/         # Feature modules
-│   ├── fund/        # Fund-related features and models
-│   ├── portfolio/   # Portfolio management
-│   ├── market/      # Market data features and models
-│   └── settings/    # Settings features and models
-├── data/             # Data layer implementations
-│   ├── fund/        # Fund data repository (EastmoneyFundRepository)
-│   ├── market/      # Market data repository
-│   └── settings/    # Settings repository
-├── domain/           # Domain interfaces
-│   ├── fund/        # FundRepository interface
-│   ├── market/      # MarketRepository interface
-│   └── settings/    # SettingsRepository interface
-├── app/              # App routing and entry point
-└── main.dart         # Application entry
+├── app/                        # App-level configuration
+│   ├── routes/                 # Routing
+│   ├── theme/                  # Theme configuration
+│   ├── config/                 # Environment configuration
+│   ├── constants/              # Global constants
+│   └── app.dart
+│
+├── core/                       # Core foundational capabilities (no business logic)
+│   ├── network/                # Network layer
+│   │   └── app_dio_factory.dart
+│   ├── storage/                # Local storage (if added)
+│   ├── utils/                  # Utility classes
+│   │   ├── shanghai_clock.dart
+│   │   └── fund_js_parsers.dart
+│   ├── extensions/             # Extension methods (if added)
+│   ├── errors/                 # Exception handling (if added)
+│   ├── base/                   # Base classes (if added)
+│   ├── services/               # Global services (if added)
+│   └── widgets/                # Global common widgets
+│
+├── shared/                     # Cross-business shared
+│   ├── models/
+│   ├── enums/
+│   ├── providers/
+│   └── widgets/
+│
+├── features/                   # Business modules (CORE)
+│   ├── home/                   # Home page
+│   ├── fund/                   # Fund management
+│   ├── account/                # Account management
+│   ├── asset/                  # Asset overview
+│   ├── settings/               # Settings
+│   └── auth/                   # Authentication (if added)
+│
+├── generated/                  # Auto-generated (freezed, json_serializable)
+│
+└── main.dart                 # Application entry
+```
+
+### Feature Module Structure
+
+Each feature module should follow this structure:
+
+```
+features/xxx/
+├── api/                    # API layer (business-specific)
+├── repository/              # Repository implementation
+├── providers/               # State management (Riverpod)
+├── pages/                  # Screen widgets
+├── widgets/                # Feature-specific widgets
+├── models/                 # Data models
+├── services/               # Business logic (use cases)
+├── states/                 # State classes
+└── controllers/           # Controllers (if needed)
 ```
 
 ### Architecture Pattern
 
-The project uses **Domain-Driven Design** with the following pattern:
+The project uses **Domain-Driven Design** with **Feature-First** organization:
 
-1. **Domain Layer** (`lib/domain/`): Abstract interfaces defining contracts
-   - `FundRepository`: Fund data operations interface
-   - `MarketRepository`: Market data operations interface
-   - `FundCloudStore`: Optional cloud storage for sector/LLM features
+#### 1. Feature Layer (`lib/features/`)
 
-2. **Data Layer** (`lib/data/`): Implementations of domain interfaces
-   - `EastmoneyFundRepository`: Implements FundRepository, fetches from Eastmoney APIs
-   - Other repositories follow the same pattern
+Business modules grouped by domain, each containing:
 
-3. **Features** (`lib/features/`): UI components and models grouped by domain
-   - Models: Data structures for each feature (fund_models.dart, market_models.dart, etc.)
-   - Views: Reusable UI components (e.g., fund_search_bar.dart)
+- **API**: Business-specific API calls
+- **Repository**: Data access abstraction
+- **Providers**: State management (Riverpod)
+- **Pages**: Screen widgets (UI composition only)
+- **Widgets**: Reusable components
+- **Models**: Data structures
+- **Services**: Business logic/use cases
 
-4. **Core** (`lib/core/`): Shared utilities
-   - `AppDioFactory`: Creates configured Dio instance with standard headers and timeouts
-   - `ShanghaiClock`: Time utilities for Shanghai market operations
-   - `FundJsParsers`: Parses JavaScript responses from Eastmoney APIs
+#### 2. Core Layer (`lib/core/`)
+
+Shared utilities and foundational capabilities:
+
+- `AppDioFactory`: Creates configured Dio instance with standard headers and timeouts
+- `ShanghaiClock`: Time utilities for Shanghai market operations
+- `FundJsParsers`: Parses JavaScript responses from Eastmoney APIs
+
+### Layer Responsibilities
+
+#### Pages Layer
+
+Screen-level widgets responsible for:
+
+- Page layout and composition
+- Page lifecycle
+- **NOT**: API calls, complex logic, database operations
+
+```dart
+class FundHomePage extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final funds = ref.watch(fundListProvider);
+
+    return Scaffold(
+      body: FundListView(funds: funds),
+    );
+  }
+}
+```
+
+#### Widget Organization
+
+##### Page-Private Widgets
+
+Only used by current page:
+
+```dart
+features/fund/widgets/
+  fund_card.dart
+  profit_chart.dart
+  holding_item.dart
+```
+
+##### Global Common Widgets
+
+Truly common components (3+ business modules reuse):
+
+```dart
+core/widgets/
+  app_button.dart
+  app_loading.dart
+  app_network_image.dart
+  app_dialog.dart
+```
+
+#### API Organization
+
+Business-specific APIs:
+
+```dart
+features/fund/api/
+  fund_api.dart
+```
+
+NOT:
+
+```dart
+api/
+  fund_api.dart
+  user_api.dart
+```
+
+#### Repository Layer
+
+Critical for maintainability - abstracts data sources:
+
+**Without Repository** (disaster):
+
+```dart
+// Page directly calls API
+final funds = await dio.get('/funds');
+```
+
+**With Repository** (maintainable):
+
+```dart
+class FundRepository {
+  final FundApi api;
+
+  FundRepository(this.api);
+
+  Future<List<FundModel>> searchFunds(String keyword) {
+    return api.searchFunds(keyword);
+  }
+}
+```
+
+Future-proof: API → SQLite + Cache + Mock (page never needs to change)
 
 ## Key Dependencies
 
-- **dio** (^5.9.2): HTTP client for all network requests
-- **fl_chart** (^1.2.0): Chart components for visualizations
-- **flutter_lints** (^6.0.0): Dart lint rules
+| Function             | Recommended              | Notes                        |
+| -------------------- | ------------------------ | ---------------------------- |
+| Network              | Dio ^5.9.2               | HTTP client                  |
+| State Management     | Riverpod                 | Type-safe, compile-time safe |
+| Charts               | fl_chart ^1.2.0          | Visualizations               |
+| Data Classes         | freezed, json_annotation | Code generation              |
+| Linting              | flutter_lints ^6.0.0     | Dart lint rules              |
+| Internationalization | intl                     | i18n support                 |
+
+## Recommended Tech Stack (2026)
+
+| Function             | Recommended           |
+| -------------------- | --------------------- |
+| Network              | Dio                   |
+| State Management     | Riverpod              |
+| Routing              | go_router             |
+| Data Classes         | freezed               |
+| Local Database       | Isar                  |
+| Local KV             | shared_preferences    |
+| Charts               | fl_chart              |
+| Internationalization | intl                  |
+| Logging              | logger                |
+| Network Cache        | dio_cache_interceptor |
+
+## Common Mistakes to Avoid
+
+### Mistake 1: Pages directly request API
+
+```dart
+onPressed() async {
+  final res = await Dio().get(...);
+}
+```
+
+**Problem**: Hard to maintain, data sources cannot change
+
+### Mistake 2: All widgets in global
+
+```dart
+widgets/
+  300 files
+```
+
+**Problem**: File chaos, impossible to locate, global namespace pollution
+
+### Mistake 3: Business logic in build()
+
+```dart
+Widget build() {
+  final result = complexCalculate();
+}
+```
+
+**Problem**: build() executes frequently, performance issues
+
+### Mistake 4: One page with 3000 lines
+
+**Problem**: Must split into smaller widgets
+
+## Recommended Feature Modules for Asset Management App
+
+```
+features/
+├── home/              # Dashboard
+├── fund/               # Fund management
+├── account/            # Account management
+├── asset/              # Asset overview
+├── transaction/        # Transaction records
+├── statistics/         # Statistics & reports
+└── settings/           # Settings
+```
 
 ## Important Patterns
 
 ### Repository Pattern
 
-All repositories in `lib/data/` follow this pattern:
+All repositories in `lib/data/` or `lib/features/*/repository/` follow:
 
 ```dart
 class XxxRepository implements XxxRepository {
-  XxxRepository({Dio? dio, XxxCloudStore? cloudStore})
+  XxxRepository({Dio? dio, XxxApi? api})
     : _dio = dio ?? AppDioFactory.create(),
-      _cloudStore = cloudStore;
+      _api = api;
 
   final Dio _dio;
-  final XxxCloudStore? _cloudStore;
+  final XxxApi _api;
 
   // Implement interface methods...
 }
 ```
 
 **Key points:**
+
 - Accept optional `dio` for testability
-- Accept optional `cloudStore` for cloud features
+- Accept optional `api` for business-specific services
 - Use `AppDioFactory.create()` as default HTTP client
 
 ### Data Parsing
@@ -141,6 +346,7 @@ This is the primary data source for fund information:
 ### Network Client (`lib/core/network/app_dio_factory.dart`)
 
 The default Dio instance includes:
+
 - Connect timeout: 10 seconds
 - Receive timeout: 20 seconds
 - Browser-like User-Agent header
@@ -149,6 +355,7 @@ The default Dio instance includes:
 ### Cloud Features
 
 Optional `FundCloudStore` enables:
+
 - Related sector lookup
 - LLM-powered fund text analysis
 
@@ -159,15 +366,17 @@ These features gracefully degrade if `cloudStore` is not provided.
 ### Adding a New Feature
 
 1. Create models in `lib/features/xxx/models/xxx_models.dart`
-2. Create domain interface in `lib/domain/xxx/xxx_repository.dart`
-3. Implement repository in `lib/data/xxx/xxx_repository.dart`
-4. Create UI components in `lib/features/xxx/view/`
-5. Wire up in `lib/app/app.dart` or create new route
+2. Create API in `lib/features/xxx/api/xxx_api.dart`
+3. Create repository in `lib/features/xxx/repository/xxx_repository.dart` (if needed)
+4. Create providers in `lib/features/xxx/providers/xxx_provider.dart`
+5. Create pages in `lib/features/xxx/pages/`
+6. Create widgets in `lib/features/xxx/widgets/`
+7. Wire up providers in `lib/app/app.dart` or create new route
 
 ### Adding a New API Endpoint
 
 1. Add method to domain interface
-2. Implement in data repository
+2. Implement in data repository or feature API
 3. Add parsing logic to `FundJsParsers` if needed
 4. Write tests for the new endpoint
 

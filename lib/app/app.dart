@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../features/fund/pages/fund_search_page.dart';
+
 class AssetsApp extends StatelessWidget {
   const AssetsApp({super.key});
 
@@ -53,7 +55,12 @@ class _AppHomePageState extends State<_AppHomePage> {
             icon: const Icon(Icons.search, size: 24),
             tooltip: 'Search',
             onPressed: () {
-              // TODO: Implement search functionality
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FundSearchPage(),
+                ),
+              );
             },
           ),
         ],

@@ -17,11 +17,13 @@ class FundNetValuePoint {
     required this.date,
     required this.nav,
     required this.growth,
+    this.accumulatedNav,
   });
 
   final String date;
   final double nav;
   final double? growth;
+  final double? accumulatedNav;
 }
 
 class SmartFundNetValue {
@@ -243,6 +245,20 @@ extension FundHistoryRangeValue on FundHistoryRange {
         return 'all';
     }
   }
+}
+
+class FundAnnualReturn {
+  const FundAnnualReturn({
+    required this.year,
+    required this.fundReturn,
+    required this.categoryAvg,
+    required this.hs300,
+  });
+
+  final int year;
+  final double? fundReturn;
+  final double? categoryAvg;
+  final double? hs300;
 }
 
 class FundHistoryPoint {

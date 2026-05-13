@@ -81,6 +81,7 @@ class FundJsParsers {
       if (!_dateRegExp.hasMatch(date)) continue;
       final nav = double.tryParse(cells[1]);
       if (nav == null) continue;
+      final accumulatedNav = cells.length > 2 ? double.tryParse(cells[2]) : null;
       double? growth;
       for (final cell in cells) {
         final match = RegExp(r'([-+]?\d+(?:\.\d+)?)\s*%').firstMatch(cell);
@@ -89,7 +90,7 @@ class FundJsParsers {
           break;
         }
       }
-      results.add(FundNetValuePoint(date: date, nav: nav, growth: growth));
+      results.add(FundNetValuePoint(date: date, nav: nav, growth: growth, accumulatedNav: accumulatedNav));
     }
 
     return results.reversed.toList(growable: false);
@@ -581,6 +582,110 @@ class FundJsParsers {
       result.add(FundGrandTotalSeries(name: name, points: points));
     }
     return result;
+  }
+
+  static List<FundAnnualReturn> computeAnnualReturns(
+    Map<String, dynamic> pingzhongdata,
+  ) {
+    final source = pingzhongdata['Data_grandTotal'];
+    if (source is! List) return [];
+
+    FundGrandTotalSeries? fundSeries;
+    FundGrandTotalSeries? categorySeries;
+    FundGrandTotalSeries? hs300Series;
+
+    for (final item in source.whereType<Map>()) {
+      final name = item['name']?.toString() ?? '';
+      final rawPoints = item['data'];
+      if (rawPoints is! List) continue;
+      final points = <FundGrandTotalPoint>[];
+      for (final row in rawPoints.whereType<List>()) {
+        if (row.length < 2) continue;
+        final ts = row[0] is num ? (row[0] as num).toInt() : null;
+        final value = row[1] is num ? (row[1] as num).toDouble() : null;
+        if (ts == null || value == null) continue;
+        points.add(
+          FundGrandTotalPoint(
+            timestamp: ts,
+            date: ShanghaiClock.formatDate(
+              DateTime.fromMillisecondsSinceEpoch(ts),
+            ),
+            value: value,
+          ),
+        );
+      }
+      if (points.isEmpty) continue;
+      final series = FundGrandTotalSeries(name: name, points: points);
+      if (name.contains('同类')) {
+        categorySeries = series;
+      } else if (name.contains('沪深300') || name.contains('300')) {
+        hs300Series = series;
+      } else {
+        fundSeries ??= series;
+      }
+    }
+
+    if (fundSeries == null) return [];
+
+    final allPoints = fundSeries.points;
+    if (allPoints.isEmpty) return [];
+
+    final earliest = allPoints.first.timestamp;
+    final latest = allPoints.last.timestamp;
+    final startYear = DateTime.fromMillisecondsSinceEpoch(earliest).year;
+    final endYear = DateTime.fromMillisecondsSinceEpoch(latest).year;
+    final firstYear = endYear - 5 > startYear ? endYear - 5 : startYear;
+
+    double? valueAtYearEnd(FundGrandTotalSeries? s, int year) {
+      if (s == null) return null;
+      final cutoff = DateTime(year + 1, 1, 1).millisecondsSinceEpoch;
+      FundGrandTotalPoint? best;
+      for (final p in s.points) {
+        if (p.timestamp < cutoff) {
+          best = p;
+        } else {
+          break;
+        }
+      }
+      return best?.value;
+    }
+
+    final results = <FundAnnualReturn>[];
+    double? prevFund;
+    double? prevCat;
+    double? prevHs;
+
+    for (var y = firstYear; y <= endYear; y++) {
+      final curFund = valueAtYearEnd(fundSeries, y);
+      final curCat = valueAtYearEnd(categorySeries, y);
+      final curHs = valueAtYearEnd(hs300Series, y);
+
+      double? fundRet;
+      if (prevFund != null && curFund != null && prevFund != 0) {
+        fundRet = (curFund - prevFund) / prevFund * 100;
+      }
+      double? catRet;
+      if (prevCat != null && curCat != null && prevCat != 0) {
+        catRet = (curCat - prevCat) / prevCat * 100;
+      }
+      double? hsRet;
+      if (prevHs != null && curHs != null && prevHs != 0) {
+        hsRet = (curHs - prevHs) / prevHs * 100;
+      }
+
+      results.add(FundAnnualReturn(
+        year: y,
+        fundReturn: fundRet,
+        categoryAvg: catRet,
+        hs300: hsRet,
+      ));
+
+      prevFund = curFund;
+      prevCat = curCat;
+      prevHs = curHs;
+    }
+
+    return results;
   }
 
   static String _decodeJsString(String raw) {

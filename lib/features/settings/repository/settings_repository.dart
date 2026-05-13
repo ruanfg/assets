@@ -1,4 +1,4 @@
-import '../../features/settings/models/settings_models.dart';
+import '../models/settings_models.dart';
 
 abstract class SettingsRepository {
   Future<LatestReleaseInfo?> fetchLatestRelease(String url);

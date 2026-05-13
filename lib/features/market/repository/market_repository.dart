@@ -1,4 +1,4 @@
-import '../../features/market/models/market_models.dart';
+import '../models/market_models.dart';
 
 abstract class MarketRepository {
   Future<String?> fetchShanghaiIndexDate();
