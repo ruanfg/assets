@@ -1,6 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../features/account/models/account.dart';
+import '../features/account/pages/create_account_page.dart';
+import '../features/account/widgets/account_card.dart';
 import '../features/fund/pages/fund_search_page.dart';
 
 class AssetsApp extends StatelessWidget {
@@ -41,6 +44,7 @@ class _AppHomePage extends StatefulWidget {
 
 class _AppHomePageState extends State<_AppHomePage> {
   bool _isVisible = true;
+  final List<Account> _accounts = [];
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +61,7 @@ class _AppHomePageState extends State<_AppHomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const FundSearchPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const FundSearchPage()),
               );
             },
           ),
@@ -88,6 +90,10 @@ class _AppHomePageState extends State<_AppHomePage> {
               // Total accounts summary card
               _buildAccountsSummaryCard(),
               const SizedBox(height: 20),
+
+              // Account cards
+              ..._buildAccountCards(),
+              if (_accounts.isNotEmpty) const SizedBox(height: 20),
 
               // Quick actions section
               _buildQuickActionsSection(),
@@ -139,54 +145,53 @@ class _AppHomePageState extends State<_AppHomePage> {
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
+                const Text(
                   '我的总资产',
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 13,
                     color: Color(0xFF757575),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: () => setState(() => _isVisible = !_isVisible),
+                  child: Icon(
                     _isVisible
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
                     color: const Color(0xFF9E9E9E),
-                    size: 20,
+                    size: 18,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _isVisible = !_isVisible;
-                    });
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  _isVisible ? '¥ 1,234,567.89' : '****',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                    letterSpacing: -1,
+                Expanded(
+                  child: Text(
+                    _isVisible ? '¥ 1,234,567.89' : '****',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      letterSpacing: -1,
+                      height: 1.2,
+                    ),
                   ),
                 ),
-                SizedBox(width: 120, height: 100, child: _buildMiniChart()),
+                const SizedBox(width: 12),
+                SizedBox(width: 100, height: 48, child: _buildMiniChart()),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: _buildProfitItem(
@@ -195,7 +200,6 @@ class _AppHomePageState extends State<_AppHomePage> {
                     isPositive: true,
                   ),
                 ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: _buildProfitItem(
                     label: '本年收益',
@@ -203,7 +207,6 @@ class _AppHomePageState extends State<_AppHomePage> {
                     isPositive: true,
                   ),
                 ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: _buildProfitItem(
                     label: '收益率',
@@ -228,19 +231,19 @@ class _AppHomePageState extends State<_AppHomePage> {
         minX: 0,
         maxX: 10,
         minY: 0,
-        maxY: 1000,
+        maxY: 100,
         lineBarsData: [
           LineChartBarData(
             spots: const [
-              FlSpot(0, 50),
-              FlSpot(1, 60),
-              FlSpot(2, -70),
-              FlSpot(3, -65),
-              FlSpot(4, -80),
-              FlSpot(5, 90),
-              FlSpot(6, 85),
+              FlSpot(0, 40),
+              FlSpot(1, 50),
+              FlSpot(2, 45),
+              FlSpot(3, 55),
+              FlSpot(4, 48),
+              FlSpot(5, 62),
+              FlSpot(6, 58),
               FlSpot(7, 70),
-              FlSpot(8, 60),
+              FlSpot(8, 65),
               FlSpot(9, 75),
               FlSpot(10, 80),
             ],
@@ -252,8 +255,10 @@ class _AppHomePageState extends State<_AppHomePage> {
             belowBarData: BarAreaData(
               show: true,
               gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF10B981).withValues(alpha: 0.2),
+                  const Color(0xFF10B981).withValues(alpha: 0.15),
                   const Color(0xFF10B981).withValues(alpha: 0.0),
                 ],
               ),
@@ -310,10 +315,25 @@ class _AppHomePageState extends State<_AppHomePage> {
     );
   }
 
+  List<Widget> _buildAccountCards() {
+    return _accounts.map((account) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: AccountCard(account: account, isVisible: _isVisible),
+      );
+    }).toList();
+  }
+
   Widget _buildAddAccountCard() {
     return InkWell(
-      onTap: () {
-        // TODO: Implement add account functionality
+      onTap: () async {
+        final account = await Navigator.push<Account>(
+          context,
+          MaterialPageRoute(builder: (_) => const CreateAccountPage()),
+        );
+        if (account != null) {
+          setState(() => _accounts.add(account));
+        }
       },
       borderRadius: BorderRadius.circular(16),
       child: Card(
